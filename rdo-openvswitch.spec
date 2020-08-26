@@ -9,16 +9,10 @@
 %define ovn_version 2.13
 %define obsolete_ovn_versions 2.10,2.11,2.12
 
-%if 0%{?rhel} > 7
-%define pyprefix python3
-%else
-%define pyprefix python
-%endif
-
 # Lua macro to create a bunch of Obsoletes by splitting up the above
 # definition and substituting where there's an asterisk
 %{lua:
-function rhosp_obsoletes(package, ver, obsoletes)
+function rdo_obsoletes(package, ver, obsoletes)
   local s
   local pkg
   pkg = string.gsub(package, "*", "")
@@ -30,18 +24,19 @@ function rhosp_obsoletes(package, ver, obsoletes)
 end
 
 function ovs_obsoletes(package)
-  rhosp_obsoletes(package, rpm.expand("%ovs_version"), rpm.expand("%obsolete_ovs_versions"))
+  rdo_obsoletes(package, rpm.expand("%ovs_version"), rpm.expand("%obsolete_ovs_versions"))
 end
 
 function ovn_obsoletes(package)
-  rhosp_obsoletes(package, rpm.expand("%ovn_version"), rpm.expand("%obsolete_ovn_versions"))
+  rdo_obsoletes(package, rpm.expand("%ovn_version"), rpm.expand("%obsolete_ovn_versions"))
 end}
 
 ######## OPENVSWITCH PACKAGING ########
 
-Name:           rhosp-openvswitch
+Name:           rdo-openvswitch
+Epoch:          1
 Version:        %{ovs_version}
-Release:        8%{?dist}
+Release:        0.2%{?dist}
 Summary:        Wrapper rpm to allow installing OVS with new versioning schemes
 
 Group:          System Environment/Daemons
@@ -50,40 +45,36 @@ URL:            http://www.openvswitch.org
 BuildArch:      noarch
 
 Requires:       openvswitch%{ovs_version}
-%if 0%{?rhel} == 8
-# RHEL8 still has network-scripts, but they are deprecated;
-# RHEL>8 is unlikely to have them.
 Requires:       network-scripts-openvswitch%{ovs_version}
-%endif
-Provides:       openvswitch = %{ovs_version}
+#Provides:       openvswitch = %{?epoch:%{epoch}:}%{ovs_version}
+#Provides:       rhosp-openvswitch = %{?epoch:%{epoch}:}%{ovs_version}
+Provides:       openvswitch = 1:%{ovs_version}
+Provides:       rdo-openvswitch = 1:%{ovs_version}
+Provides:       rhosp-openvswitch = 1:%{ovs_version}
 %{lua:ovs_obsoletes("openvswitch*")}
 
 %description
 Wrapper rpm for the base openvswitch package
 
-%package -n %{pyprefix}-rhosp-openvswitch
+%package -n python3-rdo-openvswitch
 Summary:    wrapper for python-openvswitch rpm
 License:    Public domain
 Requires:   %{name} = %{?epoch:%{epoch}:}%{version}-%{release}
-Requires:   %{pyprefix}-openvswitch%{ovs_version}
-Provides:   %{pyprefix}-openvswitch = %{ovs_version}
-%if 0%{?rhel} > 7
+Requires:   python3-openvswitch%{ovs_version}
+Provides:   python3-openvswitch = %{?epoch:%{epoch}:}%{ovs_version}
 %{lua:ovs_obsoletes("python3-openvswitch*")}
-# Just in case / being pedantic ...
 %{lua:ovs_obsoletes("python2-openvswitch*")}
-%endif
-# RHEL7 builds didn't have python2-openvswitch
 %{lua:ovs_obsoletes("python-openvswitch*")}
 
-%description -n %{pyprefix}-rhosp-openvswitch
-Wrapper rpm for the base %{pyprefix}-openvswitch package
+%description -n python3-rdo-openvswitch
+Wrapper rpm for the base python3-openvswitch package
 
 %package devel
 Summary:    wrapper for openvswitch-devel rpm
 License:    Public domain
 Requires:   %{name} = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   openvswitch%{ovs_version}-devel
-Provides:   openvswitch-devel = %{ovs_version}
+Provides:   openvswitch-devel = %{?epoch:%{epoch}:}%{ovs_version}
 %{lua:ovs_obsoletes("openvswitch*-devel")}
 
 %description devel
@@ -92,9 +83,9 @@ Wrapper rpm for the base openvswitch-devel package
 %package test
 Summary:    wrapper for openvswitch-test rpm
 License:    Public domain
-Requires:   %{pyprefix}-rhosp-openvswitch = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires:   python3-rdo-openvswitch = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   openvswitch%{ovs_version}-test
-Provides:   openvswitch-test = %{ovs_version}
+Provides:   openvswitch-test = %{?epoch:%{epoch}:}%{ovs_version}
 %{lua:ovs_obsoletes("openvswitch*-test")}
 
 %description test
@@ -102,112 +93,98 @@ Wrapper rpm for the base openvswitch-test package
 
 ######## OVN PACKAGING ########
 
-%package -n rhosp-ovn
+%package -n rdo-ovn
 Version:    %{ovn_version}
 Summary:    wrapper for ovn rpm
 License:    Public domain
 Requires:   %{name} = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   ovn%{ovn_version}
-Provides:   ovn = %{ovn_version}
-Provides:   openvswitch-ovn-common = %{ovn_version}
-Provides:   %{name}-ovn-common = %{version}
+Provides:   ovn = %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   openvswitch-ovn-common = %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   %{name}-ovn-common = %{?epoch:%{epoch}:}%{version}
 Obsoletes:  %{name}-ovn-common < %{?epoch:%{epoch}:}%{version}-%{release}
-Provides:   rhosp-ovn-common = %{version}
-Obsoletes:  rhosp-ovn-common < %{?epoch:%{epoch}:}%{version}-%{release}
+Provides:   rdo-ovn-common = %{?epoch:%{epoch}:}%{version}
+Obsoletes:  rdo-ovn-common < %{?epoch:%{epoch}:}%{version}-%{release}
+Obsoletes:  ovn < %{?epoch:%{epoch}:}%{version}-%{release}
 # OVN packaging should do this, but doesn't?
 # Obsoletes: openvswitch-ovn-common < ...
 %{lua:ovn_obsoletes("ovn*")}
 
-%description -n rhosp-ovn
+%description -n rdo-ovn
 Wrapper rpm for the base ovn package
 
-%package -n rhosp-ovn-central
+%package -n rdo-ovn-central
 Version:    %{ovn_version}
 Summary:    wrapper for openvswitch-ovn-central rpm
 License:    Public domain
-Requires:   rhosp-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires:   rdo-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   ovn%{ovn_version}-central
-Provides:   openvswitch-ovn-central = %{ovn_version}
-Obsoletes:  openvswitch-ovn-central < %{ovn_version}
-Provides:   ovn-central = %{ovn_version}
-Obsoletes:  ovn-central < %{ovn_version}
-Provides:   %{name}-ovn-central = %{ovn_version}
+Provides:   openvswitch-ovn-central = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  openvswitch-ovn-central < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   ovn-central = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  ovn-central < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   %{name}-ovn-central = %{?epoch:%{epoch}:}%{ovn_version}
 Obsoletes:  %{name}-ovn-central < %{?epoch:%{epoch}:}%{version}-%{release}
+Obsoletes:  ovn-central < %{?epoch:%{epoch}:}%{version}-%{release}
+# OVN packaging should do this, but doesn't?
 %{lua:ovn_obsoletes("openvswitch*-ovn-central")}
 %{lua:ovn_obsoletes("ovn*-central")}
 
-%description -n rhosp-ovn-central
+%description -n rdo-ovn-central
 Wrapper rpm for the base openvswitch-ovn-central package
 
-%package -n rhosp-ovn-host
+%package -n rdo-ovn-host
 Version:    %{ovn_version}
 Summary:    wrapper for openvswitch-ovn-host rpm
 License:    Public domain
-Requires:   rhosp-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires:   rdo-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   openvswitch%{ovn_version}-ovn-host
-Provides:   openvswitch-ovn-host = %{ovn_version}
-Obsoletes:  openvswitch-ovn-host < %{ovn_version}
-Provides:   ovn-host = %{ovn_version}
-Obsoletes:  ovn-host < %{ovn_version}
-Provides:   %{name}-ovn-host = %{ovn_version}
+Provides:   openvswitch-ovn-host = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  openvswitch-ovn-host < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   ovn-host = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  ovn-host < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   %{name}-ovn-host = %{?epoch:%{epoch}:}%{ovn_version}
 Obsoletes:  %{name}-ovn-host < %{?epoch:%{epoch}:}%{version}-%{release}
+Obsoletes:  ovn-host < %{?epoch:%{epoch}:}%{version}-%{release}
 %{lua:ovn_obsoletes("openvswitch*-ovn-host")}
 %{lua:ovn_obsoletes("ovn*-host")}
 
-%description -n rhosp-ovn-host
+%description -n rdo-ovn-host
 Wrapper rpm for the base openvswitch-ovn-host package
 
-%package -n rhosp-ovn-vtep
+%package -n rdo-ovn-vtep
 Version:    %{ovn_version}
 Summary:    wrapper for openvswitch-ovn-vtep rpm
 License:    Public domain
-Requires:   rhosp-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires:   rdo-ovn = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires:   ovn%{ovn_version}-vtep
-Provides:   openvswitch-ovn-vtep = %{ovn_version}
-Obsoletes:  openvswitch-ovn-vtep < %{ovn_version}
-Provides:   ovn-vtep = %{ovn_version}
-Obsoletes:  ovn-vtep < %{ovn_version}
-Provides:   %{name}-ovn-vtep = %{ovn_version}
+Provides:   openvswitch-ovn-vtep = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  openvswitch-ovn-vtep < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   ovn-vtep = %{?epoch:%{epoch}:}%{ovn_version}
+Obsoletes:  ovn-vtep < %{?epoch:%{epoch}:}%{ovn_version}
+Provides:   %{name}-ovn-vtep = %{?epoch:%{epoch}:}%{ovn_version}
 Obsoletes:  %{name}-ovn-vtep < %{?epoch:%{epoch}:}%{version}-%{release}
+Obsoletes:  ovn-vtep < %{?epoch:%{epoch}:}%{version}-%{release}
 %{lua:ovn_obsoletes("openvswitch*-ovn-vtep")}
 %{lua:ovn_obsoletes("ovn*-vtep")}
 
-%description -n rhosp-ovn-vtep
+%description -n rdo-ovn-vtep
 Wrapper rpm for the base ovn-vtep package
 
 %setup -q
 
 %build
 
-%files
-%files -n %{pyprefix}-rhosp-openvswitch
+%files -n rdo-openvswitch
+%files -n python3-rdo-openvswitch
 %files devel
 %files test
-%files -n rhosp-ovn
-%files -n rhosp-ovn-central
-%files -n rhosp-ovn-host
-%files -n rhosp-ovn-vtep
+%files -n rdo-ovn
+%files -n rdo-ovn-central
+%files -n rdo-ovn-host
+%files -n rdo-ovn-vtep
 
 %changelog
-* Mon Apr 20 2020 Lon Hohberger <lon@redhat.com> 2.13-8
-- Allow OVS and OVN versions to diverge
-- Fix requirements / obsoletes / provides preventing certain upgrades from 2.11-0.6
+* Thu Aug 13 2020 Yatin Karel <ykarel@redhat.com> - 2.13-0.2
+- RDO Wrapper
 
-* Thu Mar 19 2020 Lon Hohberger <lon@redhat.com> 2.13-3
-- Fix OVN wrappers
-
-* Wed Mar 18 2020 Lon Hohberger <lon@redhat.com> 2.13-2
-- Mirror openvswitch2.13 internal dependencies in wrappers
-
-* Mon Mar 16 2020 Thierry Vignaud <tvignaud@redhat.com> 2.13-1
-- rebase to OVS 2.13
-
-* Tue Jul 30 2019 Lon Hohberger <lon@redhat.com> - 2.11-0.6
-- Use Obsoletes: lua macro so we can add/remove versions to Obsoletes
-  without rewriting the spec file each time
-
-* Tue Jun 11 2019 Thierry Vignaud <tvignaud@redhat.com> 2.11-0.1.fc29
-- Update for OVS 2.11
-
-* Wed Jul 11 2018 Mike Burns <mburns@redhat.com> - 2.10-0.1
-- initial spec for RHOSP openvswitch wrapper RPMs
